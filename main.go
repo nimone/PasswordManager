@@ -3,13 +3,17 @@ package main
 import (
 	"fmt"
 	"github.com/nimone/PasswordManager/db"
+	"github.com/nimone/PasswordManager/helper"
 )
 
 func main() {
 	fmt.Println("Go Password Manager")
 
-	passwordDB := db.PasswordDB{}
-	passwordDB.Init("./test.db")
+	passwordDB, err := db.Init("./test.db")
+	helper.HandleError(err)
+
+	err = db.GenerateDummyEntries(passwordDB)
+	helper.HandleError(err)
 
 	var mainOpt int
 	fmt.Printf("What do you want to do?\n1. Store a password\n2. Retrieve a password\n> ")
@@ -28,10 +32,8 @@ func main() {
 		fmt.Printf("Password: ")
 		fmt.Scanf("%s\n", &passwordEntry.Password)
 
-		err := passwordDB.Store(passwordEntry)
-		if err != nil {
-			fmt.Println(err)
-		} else {
+		tx := passwordDB.Create(&passwordEntry)
+		if !helper.HandleError(tx.Error) {
 			fmt.Println("The password is saved successfully")
 		}
 
@@ -39,20 +41,22 @@ func main() {
 
 	case 2:
 		var entryName string
+		var passwordEntries []db.PasswordEntry
+
 		fmt.Printf("Retrive the password for: ")
 		fmt.Scanf("%s\n", &entryName)
 
-		entries, err := passwordDB.Get(entryName)
-		if err != nil {
-			fmt.Println(err)
+		tx := passwordDB.Where(
+			"entry_name LIKE ?", "%"+entryName+"%",
+		).Find(&passwordEntries)
 
-		} else {
-			if len(entries) == 0 {
-				fmt.Printf("There's no entry for '%s'", entryName)
+		if !helper.HandleError(tx.Error) {
+			if len(passwordEntries) == 0 {
+				fmt.Printf("There's nothing for '%s'\n", entryName)
 
 			} else {
 				fmt.Println("EntryName\t Username\t Password")
-				for _, e := range entries {
+				for _, e := range passwordEntries {
 					fmt.Printf("%s\t %s\t %s\n", e.EntryName, e.UserName, e.Password)
 				}
 			}
