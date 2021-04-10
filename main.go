@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/nimone/PasswordManager/db"
 	"github.com/nimone/PasswordManager/helper"
+	"os"
+	"strings"
 )
 
 func main() {
@@ -19,20 +22,24 @@ func main() {
 	fmt.Printf("What do you want to do?\n1. Store a password\n2. Retrieve a password\n> ")
 	fmt.Scanf("%d\n", &mainOpt)
 
+	input := bufio.NewReader(os.Stdin)
+
 	switch mainOpt {
 	case 1:
-		passwordEntry := db.PasswordEntry{}
-
 		fmt.Printf("The password is for: ")
-		fmt.Scanf("%s\n", &passwordEntry.EntryName)
+		entryName, _ := input.ReadString('\n')
 
 		fmt.Printf("Email/username: ")
-		fmt.Scanf("%s\n", &passwordEntry.UserName)
+		userName, _ := input.ReadString('\n')
 
 		fmt.Printf("Password: ")
-		fmt.Scanf("%s\n", &passwordEntry.Password)
+		password, _ := input.ReadString('\n')
 
-		tx := passwordDB.Create(&passwordEntry)
+		tx := passwordDB.Create(&db.PasswordEntry{
+			EntryName: strings.TrimSuffix(entryName, "\n"),
+			UserName:  strings.TrimSuffix(userName, "\n"),
+			Password:  strings.TrimSuffix(password, "\n"),
+		})
 		if !helper.HandleError(tx.Error) {
 			fmt.Println("The password is saved successfully")
 		}
@@ -40,14 +47,15 @@ func main() {
 		break
 
 	case 2:
-		var entryName string
 		var passwordEntries []db.PasswordEntry
 
 		fmt.Printf("Retrive the password for: ")
-		fmt.Scanf("%s\n", &entryName)
+		entryName, _ := input.ReadString('\n')
+		entryName = strings.TrimSuffix(entryName, "\n")
 
 		tx := passwordDB.Where(
-			"entry_name LIKE ?", "%"+entryName+"%",
+			"entry_name LIKE ?",
+			"%"+entryName+"%",
 		).Find(&passwordEntries)
 
 		if !helper.HandleError(tx.Error) {
