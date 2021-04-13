@@ -21,7 +21,7 @@ func CreateMasterPassword() []byte {
 			continue
 		}
 
-		fmt.Printf("Confirm: ")
+		fmt.Printf("Confirm Master Password: ")
 		masterPasswordConfirm, _ := terminal.ReadPassword(int(syscall.Stdin))
 		fmt.Printf("\n")
 
