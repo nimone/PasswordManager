@@ -3,54 +3,17 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/nimone/PasswordManager/auth"
 	"github.com/nimone/PasswordManager/crypto"
 	"github.com/nimone/PasswordManager/db"
 	"github.com/nimone/PasswordManager/helper"
-	"golang.org/x/crypto/ssh/terminal"
+	// "golang.org/x/crypto/ssh/terminal"
 	"os"
 	"strings"
-	"syscall"
+	// "syscall"
 )
 
 const dbPath = "./test.db"
-
-func createMasterPassword() []byte {
-	var masterPassword []byte
-
-	fmt.Println("Create a master password (make sure it's a strong one i.e. min 8 characters)")
-
-	for {
-		fmt.Printf("Master Password: ")
-		masterPassword, _ = terminal.ReadPassword(int(syscall.Stdin))
-		fmt.Printf("\n")
-
-		if len(string(masterPassword)) < 8 {
-			fmt.Println("Minimum password length should be 8 characters, try again")
-			continue
-		}
-
-		fmt.Printf("Confirm: ")
-		masterPasswordConfirm, _ := terminal.ReadPassword(int(syscall.Stdin))
-		fmt.Printf("\n")
-
-		if string(masterPassword) != string(masterPasswordConfirm) {
-			fmt.Println("Passwords doesn't match, try again")
-			continue
-		}
-		break
-	}
-	return masterPassword
-}
-
-func getMasterPassword() []byte {
-	var masterPassword []byte
-
-	fmt.Printf("Master Password: ")
-	masterPassword, _ = terminal.ReadPassword(int(syscall.Stdin))
-	fmt.Printf("\n")
-
-	return masterPassword
-}
 
 func main() {
 	fmt.Println("Go Password Manager")
@@ -58,10 +21,10 @@ func main() {
 	var masterPassword []byte
 	firstRun := false
 
-	// if the database is does not exist (first run)
+	// if the database does not exist (first run)
 	// prompt the use to create a master password
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		masterPassword = createMasterPassword()
+		masterPassword = auth.CreateMasterPassword()
 		firstRun = true
 	}
 
@@ -79,20 +42,22 @@ func main() {
 		err = db.GenerateDummyEntries(passwordDB)
 		helper.HandleError(err)
 
-		// else validate the user
+		// else authenticate the user
 	} else {
 		var masterPasswordEntry db.PasswordEntry
+		masterPassword = auth.GetMasterPassword()
+
 		passwordDB.First(&masterPasswordEntry)
 
-		err := crypto.CheckPasswordHash(
+		UserAuthenticated := auth.AuthenticateUser(
 			[]byte(masterPasswordEntry.Password),
-			getMasterPassword(),
 		)
-		if err != nil {
-			fmt.Println("Master password you provided is invalid")
-			os.Exit(1)
+
+		if UserAuthenticated {
+			fmt.Println("Authetication Successful")
 		} else {
-			fmt.Println("Autheticated Successfully")
+			fmt.Println("Authentication Failed: Master password is invalid")
+			os.Exit(1)
 		}
 	}
 
